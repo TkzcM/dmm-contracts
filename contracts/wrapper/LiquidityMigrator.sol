@@ -372,6 +372,9 @@ contract LiquidityMigrator is ILiquidityMigrator, Ownable {
             uint256 liquidity
         )
     {
+        uint256[2] memory controlRates;
+        controlRates[0] = 0;
+        controlRates[1] = 2**256 - 1;
         (amountA, amountB, liquidity) = IDMMLiquidityRouter(dmmRouter).addLiquidity(
             IERC20(tokenA),
             IERC20(tokenB),
@@ -380,6 +383,7 @@ contract LiquidityMigrator is ILiquidityMigrator, Ownable {
             amountBDesired,
             amountAMin,
             amountBMin,
+            controlRates,
             msg.sender,
             deadline
         );
