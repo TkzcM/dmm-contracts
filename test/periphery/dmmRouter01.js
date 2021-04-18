@@ -297,6 +297,40 @@ contract('DMMRouter', function (accounts) {
         'DMMRouter: INSUFFICIENT_B_AMOUNT'
       );
 
+      await expectRevert(
+        router.addLiquidity(
+          token1.address,
+          token0.address,
+          pool.address,
+          updateAmount,
+          updateAmount,
+          0,
+          0,
+          [vReserveRatio.add(new BN(1)), vReserveRatio.add(new BN(2))],
+          trader,
+          bigAmount,
+          {from: trader}
+        ),
+        'DMMRouter: OUT_OF_BOUNDS_VRESERVE'
+      );
+
+      await expectRevert(
+        router.addLiquidity(
+          token1.address,
+          token0.address,
+          pool.address,
+          updateAmount,
+          updateAmount,
+          0,
+          0,
+          [vReserveRatio.sub(new BN(1)), vReserveRatio],
+          trader,
+          bigAmount,
+          {from: trader}
+        ),
+        'DMMRouter: OUT_OF_BOUNDS_VRESERVE'
+      );
+
       result = await router.addLiquidity(
         token0.address,
         token1.address,
