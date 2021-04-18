@@ -26,6 +26,7 @@ interface ILiquidityMigrator {
     struct PoolInfo {
         address poolAddress;
         uint32 poolAmp;
+        uint256[2] dmmVReserveRatioBounds;
     }
 
     event RemoveLiquidity(
@@ -347,6 +348,7 @@ contract LiquidityMigrator is ILiquidityMigrator, Ownable {
                 amountAMin,
                 amountBMin,
                 poolInfo.poolAddress,
+                poolInfo.dmmVReserveRatioBounds,
                 deadline
             );
         }
@@ -363,6 +365,7 @@ contract LiquidityMigrator is ILiquidityMigrator, Ownable {
         uint256 amountAMin,
         uint256 amountBMin,
         address dmmPool,
+        uint256[2] memory vReserveRatioBounds,
         uint256 deadline
     )
         internal
@@ -372,9 +375,6 @@ contract LiquidityMigrator is ILiquidityMigrator, Ownable {
             uint256 liquidity
         )
     {
-        uint256[2] memory controlRates;
-        controlRates[0] = 0;
-        controlRates[1] = 2**256 - 1;
         (amountA, amountB, liquidity) = IDMMLiquidityRouter(dmmRouter).addLiquidity(
             IERC20(tokenA),
             IERC20(tokenB),
@@ -383,7 +383,7 @@ contract LiquidityMigrator is ILiquidityMigrator, Ownable {
             amountBDesired,
             amountAMin,
             amountBMin,
-            controlRates,
+            vReserveRatioBounds,
             msg.sender,
             deadline
         );
