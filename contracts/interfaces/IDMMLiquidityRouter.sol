@@ -13,7 +13,7 @@ interface IDMMLiquidityRouter {
      * @param amountBDesired the amount of tokenB users want to add to the pool
      * @param amountAMin bounds to the extents to which amountB/amountA can go up
      * @param amountBMin bounds to the extents to which amountB/amountA can go down
-     * @param vReserveRatioBounds bounds to the extents to which vReserveB/vReserveA can go
+     * @param vReserveRatioBounds bounds to the extents to which vReserveB/vReserveA can go (precision: 2 ** 112)
      * @param to Recipient of the liquidity tokens.
      * @param deadline Unix timestamp after which the transaction will revert.
      */
@@ -78,7 +78,7 @@ interface IDMMLiquidityRouter {
      * @dev   msg.value equals to amountEthDesired
      * @param amountTokenMin bounds to the extents to which WETH/token can go up
      * @param amountETHMin bounds to the extents to which WETH/token can go down
-     * @param vReserveRatioBounds bounds to the extents to which vReserveB/vReserveA can go
+     * @param vReserveRatioBounds bounds to the extents to which vReserveB/vReserveA can go (precision: 2 ** 112)
      * @param to Recipient of the liquidity tokens.
      * @param deadline Unix timestamp after which the transaction will revert.
      */
