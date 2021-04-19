@@ -179,7 +179,7 @@ contract DMMRouter02 is IDMMRouter02 {
         if (pool == address(0)) {
             pool = IDMMFactory(factory).createPool(tokenA, tokenB, ampBps);
         }
-        // if we add liquidity to an existing pools this is unamplifed pool
+        // if we add liquidity to an existing pool, this is an unamplifed pool
         // so there is no need for bounds of virtual reserve ratio
         uint256[2] memory vReserveRatioBounds = [MIN_VRESERVE_RATIO, MAX_VRESERVE_RATIO];
         (amountA, amountB, liquidity) = addLiquidity(
@@ -221,7 +221,7 @@ contract DMMRouter02 is IDMMRouter02 {
         if (pool == address(0)) {
             pool = IDMMFactory(factory).createPool(token, weth, ampBps);
         }
-        // if we add liquidity to an existing pools this is unamplifed pool
+        // if we add liquidity to an existing pool, this is an unamplifed pool
         // so there is no need for bounds of virtual reserve ratio
         uint256[2] memory vReserveRatioBounds = [MIN_VRESERVE_RATIO, MAX_VRESERVE_RATIO];
         (amountToken, amountETH, liquidity) = addLiquidityETH(
