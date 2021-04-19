@@ -67,7 +67,7 @@ contract DMMRouter02 is IDMMRouter02 {
             }
             uint256 currentRate = (vReserveB * Q112) / vReserveA;
             require(
-                currentRate >= vReserveRatioBounds[0] && currentRate < vReserveRatioBounds[1],
+                currentRate >= vReserveRatioBounds[0] && currentRate <= vReserveRatioBounds[1],
                 "DMMRouter: OUT_OF_BOUNDS_VRESERVE"
             );
         }

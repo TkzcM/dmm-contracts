@@ -699,7 +699,7 @@ contract('LiquidityMigrator', accounts => {
         token1Amount,
         token1Amount.div(new BN(2000)),
         token1Amount,
-        [poolAddress, new BN(0), [vReserveRatio, vReserveRatio.add(new BN(1))]],
+        [poolAddress, new BN(0), [vReserveRatio, vReserveRatio]],
         deadline,
         [false, data.v, data.r, data.s],
         {from: liquidityProvider}
