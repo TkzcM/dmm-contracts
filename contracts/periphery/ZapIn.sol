@@ -286,18 +286,24 @@ contract ZapIn {
             tokenOut
         );
         uint256 totalSupply = _calculateSyncTotalSupply(IDMMPool(pool), data);
+        bool isAmpPool = (IDMMPool(pool).ampBps() != 10000);
         // calculate amountOut
         amountIn = lpQty.mul(data.rIn) / totalSupply;
         amountOut = lpQty.mul(data.rOut) / totalSupply;
         // calculate ReserveData
         newData.rIn = data.rIn - amountIn;
         newData.rOut = data.rOut - amountOut;
-        uint256 b = Math.min(
-            newData.rIn.mul(totalSupply) / data.rIn,
-            newData.rOut.mul(totalSupply) / data.rOut
-        );
-        newData.vIn = Math.max(data.vIn.mul(b) / totalSupply, data.rIn);
-        newData.vOut = Math.max(data.vOut.mul(b) / totalSupply, data.rOut);
+        if (isAmpPool) {
+            uint256 b = Math.min(
+                newData.rIn.mul(totalSupply) / data.rIn,
+                newData.rOut.mul(totalSupply) / data.rOut
+            );
+            newData.vIn = Math.max(data.vIn.mul(b) / totalSupply, newData.rIn);
+            newData.vOut = Math.max(data.vOut.mul(b) / totalSupply, newData.rOut);
+        } else {
+            newData.vIn = newData.rIn;
+            newData.vOut = newData.rOut;
+        }
         newData.feeInPrecision = data.feeInPrecision;
     }
 
@@ -321,7 +327,7 @@ contract ZapIn {
         uint256 denominator = rootK.add(rootKLast).mul(5000);
         uint256 liquidity = numerator / denominator;
 
-        totalSupply -= liquidity;
+        totalSupply += liquidity;
     }
 
     function _calculateSwapInAmount(

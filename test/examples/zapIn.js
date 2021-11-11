@@ -19,154 +19,184 @@ contract('ZapIn', accounts => {
   let zapIn;
   let pool;
   let token0Addr;
-  beforeEach('basic setup', async () => {
-    token = await TestToken.new('tst', 'A', Helper.expandTo18Decimals(10000));
-    weth = await WETH.new();
 
-    let factory = await DMMFactory.new(accounts[0]);
-    await factory.setFeeConfiguration(accounts[1], new BN(1000));
+  let ampBpsArr = [10000, 15000];
+  ampBpsArr.forEach(ampBps => {
+    describe(`ampBps = ${ampBps}`, async () => {
+      beforeEach('basic setup', async () => {
+        token = await TestToken.new('tst', 'A', Helper.expandTo18Decimals(10000));
+        weth = await WETH.new();
 
-    let router = await DMMRouter.new(factory.address, weth.address);
-    // set up pool with 100 token and 30 eth
-    await token.approve(router.address, MaxUint256);
-    await router.addLiquidityNewPoolETH(
-      token.address,
-      new BN(15000),
-      Helper.precisionUnits.mul(new BN(100)),
-      new BN(0),
-      new BN(0),
-      accounts[0],
-      MaxUint256,
-      {
-        value: Helper.expandTo18Decimals(30)
-      }
-    );
-    poolAddress = (await factory.getPools(token.address, weth.address))[0];
-    pool = await DMMPool.at(poolAddress);
-    token0Addr = await pool.token0();
-    // swap to change the ratio of the pool a bit
-    await router.swapExactETHForTokens(
-      new BN(0),
-      [poolAddress],
-      [weth.address, token.address],
-      accounts[0],
-      MaxUint256,
-      {value: Helper.expandTo18Decimals(7)}
-    );
-    zapIn = await ZapIn.new(factory.address, weth.address);
-  });
+        let factory = await DMMFactory.new(accounts[0]);
+        await factory.setFeeConfiguration(accounts[1], new BN(1000));
 
-  it('#zapIn', async () => {
-    await token.approve(zapIn.address, MaxUint256, {from: accounts[1]});
-    let userIn = Helper.expandTo18Decimals(5);
-    await token.transfer(accounts[1], userIn);
+        let router = await DMMRouter.new(factory.address, weth.address);
+        // set up pool with 100 token and 30 eth
+        await token.approve(router.address, MaxUint256);
+        await router.addLiquidityNewPoolETH(
+          token.address,
+          new BN(ampBps),
+          Helper.precisionUnits.mul(new BN(100)),
+          new BN(0),
+          new BN(0),
+          accounts[0],
+          MaxUint256,
+          {
+            value: Helper.expandTo18Decimals(30)
+          }
+        );
+        poolAddress = (await factory.getPools(token.address, weth.address))[0];
+        pool = await DMMPool.at(poolAddress);
+        token0Addr = await pool.token0();
+        // swap to change the ratio of the pool a bit
+        await router.swapExactETHForTokens(
+          new BN(0),
+          [poolAddress],
+          [weth.address, token.address],
+          accounts[0],
+          MaxUint256,
+          {value: Helper.expandTo18Decimals(7)}
+        );
+        zapIn = await ZapIn.new(factory.address, weth.address);
+      });
 
-    let swapAmounts = await zapIn.calculateSwapAmounts(token.address, weth.address, pool.address, userIn);
-    let result = await zapIn.zapIn(token.address, weth.address, userIn, pool.address, accounts[1], 1, MaxUint256, {
-      from: accounts[1]
-    });
+      it('#zapIn', async () => {
+        await token.approve(zapIn.address, MaxUint256, {from: accounts[1]});
+        let userIn = Helper.expandTo18Decimals(5);
+        await token.transfer(accounts[1], userIn);
 
-    expectEvent.inTransaction(result.tx, pool, 'Swap', {
-      amount0In: token0Addr === token.address ? swapAmounts[0] : new BN(0),
-      amount1In: token0Addr === token.address ? new BN(0) : swapAmounts[0],
-      amount0Out: token0Addr === token.address ? new BN(0) : swapAmounts[1],
-      amount1Out: token0Addr === token.address ? swapAmounts[1] : new BN(0)
-    });
-  });
+        let swapAmounts = await zapIn.calculateSwapAmounts(token.address, weth.address, pool.address, userIn);
+        let result = await zapIn.zapIn(token.address, weth.address, userIn, pool.address, accounts[1], 1, MaxUint256, {
+          from: accounts[1]
+        });
 
-  it('#zapInEth', async () => {
-    let userIn = Helper.expandTo18Decimals(3);
-    await zapIn.zapInEth(token.address, pool.address, accounts[1], 1, MaxUint256, {from: accounts[1], value: userIn});
-    Helper.assertGreater(await pool.balanceOf(accounts[1]), new BN(0));
-  });
+        expectEvent.inTransaction(result.tx, pool, 'Swap', {
+          amount0In: token0Addr === token.address ? swapAmounts[0] : new BN(0),
+          amount1In: token0Addr === token.address ? new BN(0) : swapAmounts[0],
+          amount0Out: token0Addr === token.address ? new BN(0) : swapAmounts[1],
+          amount1Out: token0Addr === token.address ? swapAmounts[1] : new BN(0)
+        });
+      });
 
-  it('#zapOut', async () => {
-    let userIn = Helper.expandTo18Decimals(3);
-    await zapIn.zapInEth(token.address, pool.address, accounts[1], 1, MaxUint256, {from: accounts[1], value: userIn});
+      it('#zapInEth', async () => {
+        let userIn = Helper.expandTo18Decimals(3);
+        await zapIn.zapInEth(token.address, pool.address, accounts[1], 1, MaxUint256, {
+          from: accounts[1],
+          value: userIn
+        });
+        Helper.assertGreater(await pool.balanceOf(accounts[1]), new BN(0));
+      });
 
-    await pool.approve(zapIn.address, MaxUint256, {from: accounts[1]});
+      it('#zapOut', async () => {
+        let userIn = Helper.expandTo18Decimals(3);
+        await zapIn.zapInEth(token.address, pool.address, accounts[1], 1, MaxUint256, {
+          from: accounts[1],
+          value: userIn
+        });
 
-    let liquidity = await pool.balanceOf(accounts[1]);
+        await pool.approve(zapIn.address, MaxUint256, {from: accounts[1]});
 
-    let zapOutAmount = await zapIn.calculateZapOutAmount(token.address, weth.address, pool.address, liquidity);
+        let liquidity = await pool.balanceOf(accounts[1]);
 
-    let beforeBalance = await Helper.getBalancePromise(accounts[1]);
-    await zapIn.zapOutEth(token.address, liquidity, pool.address, accounts[1], 1, MaxUint256, {
-      from: accounts[1],
-      gasPrice: new BN(0)
-    });
-    let afterBalance = await Helper.getBalancePromise(accounts[1]);
-    Helper.assertEqual(afterBalance.sub(beforeBalance), zapOutAmount, 'unexpected zapOut amout');
-  });
+        let zapOutAmount = await zapIn.calculateZapOutAmount(token.address, weth.address, pool.address, liquidity);
 
-  it('#zapOutPermit', async () => {
-    const liquidityProvider = accounts[3];
-    // key from hardhat.config.js
-    const liquidityProviderPkKey = '0xee9d129c1997549ee09c0757af5939b2483d80ad649a0eda68e8b0357ad11131';
+        let beforeBalance = await Helper.getBalancePromise(accounts[1]);
+        await zapIn.zapOutEth(token.address, liquidity, pool.address, accounts[1], 1, MaxUint256, {
+          from: accounts[1],
+          gasPrice: new BN(0)
+        });
+        let afterBalance = await Helper.getBalancePromise(accounts[1]);
+        Helper.assertEqual(afterBalance.sub(beforeBalance), zapOutAmount, 'unexpected zapOut amout');
+      });
 
-    let userIn = Helper.expandTo18Decimals(3);
-    await zapIn.zapInEth(token.address, pool.address, liquidityProvider, 1, MaxUint256, {
-      from: liquidityProvider,
-      value: userIn
-    });
+      it('#zapOutPermit', async () => {
+        const liquidityProvider = accounts[3];
+        // key from hardhat.config.js
+        const liquidityProviderPkKey = '0xee9d129c1997549ee09c0757af5939b2483d80ad649a0eda68e8b0357ad11131';
 
-    const liquidity = await pool.balanceOf(liquidityProvider);
+        let userIn = Helper.expandTo18Decimals(3);
+        await zapIn.zapInEth(token.address, pool.address, liquidityProvider, 1, MaxUint256, {
+          from: liquidityProvider,
+          value: userIn
+        });
 
-    const nonce = await pool.nonces(liquidityProvider);
-    const digest = await Helper.getApprovalDigest(
-      pool,
-      liquidityProvider,
-      zapIn.address,
-      liquidity,
-      nonce,
-      MaxUint256
-    );
-    const {v, r, s} = ecsign(Buffer.from(digest.slice(2), 'hex'), Buffer.from(liquidityProviderPkKey.slice(2), 'hex'));
+        const liquidity = await pool.balanceOf(liquidityProvider);
 
-    await zapIn.zapOutPermit(
-      token.address,
-      weth.address,
-      liquidity,
-      pool.address,
-      accounts[1],
-      1,
-      MaxUint256,
-      false,
-      v,
-      r,
-      s,
-      {
-        from: liquidityProvider
-      }
-    );
-  });
+        const nonce = await pool.nonces(liquidityProvider);
+        const digest = await Helper.getApprovalDigest(
+          pool,
+          liquidityProvider,
+          zapIn.address,
+          liquidity,
+          nonce,
+          MaxUint256
+        );
+        const {v, r, s} = ecsign(
+          Buffer.from(digest.slice(2), 'hex'),
+          Buffer.from(liquidityProviderPkKey.slice(2), 'hex')
+        );
 
-  it('#zapOut with permit', async () => {
-    const liquidityProvider = accounts[3];
-    // key from hardhat.config.js
-    const liquidityProviderPkKey = '0xee9d129c1997549ee09c0757af5939b2483d80ad649a0eda68e8b0357ad11131';
+        await zapIn.zapOutPermit(
+          token.address,
+          weth.address,
+          liquidity,
+          pool.address,
+          accounts[1],
+          1,
+          MaxUint256,
+          false,
+          v,
+          r,
+          s,
+          {
+            from: liquidityProvider
+          }
+        );
+      });
 
-    let userIn = Helper.expandTo18Decimals(3);
-    await zapIn.zapInEth(token.address, pool.address, liquidityProvider, 1, MaxUint256, {
-      from: liquidityProvider,
-      value: userIn
-    });
+      it('#zapOut with permit', async () => {
+        const liquidityProvider = accounts[3];
+        // key from hardhat.config.js
+        const liquidityProviderPkKey = '0xee9d129c1997549ee09c0757af5939b2483d80ad649a0eda68e8b0357ad11131';
 
-    const liquidity = await pool.balanceOf(liquidityProvider);
+        let userIn = Helper.expandTo18Decimals(3);
+        await zapIn.zapInEth(token.address, pool.address, liquidityProvider, 1, MaxUint256, {
+          from: liquidityProvider,
+          value: userIn
+        });
 
-    const nonce = await pool.nonces(liquidityProvider);
-    const digest = await Helper.getApprovalDigest(
-      pool,
-      liquidityProvider,
-      zapIn.address,
-      liquidity,
-      nonce,
-      MaxUint256
-    );
-    const {v, r, s} = ecsign(Buffer.from(digest.slice(2), 'hex'), Buffer.from(liquidityProviderPkKey.slice(2), 'hex'));
+        const liquidity = await pool.balanceOf(liquidityProvider);
 
-    await zapIn.zapOutEthPermit(token.address, liquidity, pool.address, accounts[1], 1, MaxUint256, false, v, r, s, {
-      from: liquidityProvider
+        const nonce = await pool.nonces(liquidityProvider);
+        const digest = await Helper.getApprovalDigest(
+          pool,
+          liquidityProvider,
+          zapIn.address,
+          liquidity,
+          nonce,
+          MaxUint256
+        );
+        const {v, r, s} = ecsign(
+          Buffer.from(digest.slice(2), 'hex'),
+          Buffer.from(liquidityProviderPkKey.slice(2), 'hex')
+        );
+
+        await zapIn.zapOutEthPermit(
+          token.address,
+          liquidity,
+          pool.address,
+          accounts[1],
+          1,
+          MaxUint256,
+          false,
+          v,
+          r,
+          s,
+          {
+            from: liquidityProvider
+          }
+        );
+      });
     });
   });
 });
